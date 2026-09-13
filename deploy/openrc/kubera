@@ -1,0 +1,34 @@
+#!/sbin/openrc-run
+# OpenRC service for Kubera (stdio MCP server).
+#
+# The MCP protocol runs on stdin/stdout. An EOF on stdin is a clean-shutdown
+# signal, so this service keeps stdin open with a read-write FIFO; without it
+# the daemon would exit immediately under supervision. Clients attach to the
+# process via their own transport (e.g. socat/ssh bridging stdio).
+
+description="Kubera personal finance MCP server (stdio)"
+
+KUBERA_STDIN="${KUBERA_STDIN:-/run/kubera.stdin}"
+
+command="/bin/sh"
+command_args="-c 'exec 0<>${KUBERA_STDIN}; exec /usr/local/bin/kubera'"
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+directory="/var/lib/kubera"
+output_log="/var/log/${RC_SVCNAME}.log"
+error_log="/var/log/${RC_SVCNAME}.log"
+
+depend() {
+	need localmount
+	use logger
+}
+
+start_pre() {
+	checkpath -d -m 0700 -o kubera:kubera /var/lib/kubera
+	[ -p "${KUBERA_STDIN}" ] || mkfifo -m 600 "${KUBERA_STDIN}"
+	chown kubera:kubera "${KUBERA_STDIN}"
+}
+
+stop_post() {
+	rm -f "${KUBERA_STDIN}"
+}
