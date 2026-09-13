@@ -21,7 +21,8 @@ import (
 	"kubera/internal/repository/sqlite"
 )
 
-const version = "0.1.0"
+// version is stamped at build time via -ldflags "-X main.version=...".
+var version = "0.1.0"
 
 func main() {
 	if err := run(); err != nil {
