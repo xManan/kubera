@@ -1,0 +1,6 @@
+*.db
+*.db-wal
+*.db-shm
+/kubera
+/kubera-test
+.DS_Store
