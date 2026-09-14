@@ -216,6 +216,8 @@ A category should include:
     
 *   User-visible name.
     
+*   Optional description of what kinds of transactions belong in the category, exposed to AI clients for classification.
+    
 *   Archived flag or archive timestamp.
     
 *   Creation and update timestamps.

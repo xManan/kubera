@@ -213,6 +213,7 @@ CREATE TABLE schema_migrations (
 CREATE TABLE categories (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
     name_normalized TEXT NOT NULL,
     archived_at TEXT,
     created_at TEXT NOT NULL,
@@ -418,12 +419,15 @@ Description:            500 UTF-8 characters
 Original notification:  10,000 UTF-8 characters
 Reference ID:           256 UTF-8 characters
 Category name:          100 UTF-8 characters
+Category description:   500 UTF-8 characters
 Void reason:            1,000 UTF-8 characters
 ```
 
 ### 8.2 Category rules
 
 *   Category names must be unique among active categories after trimming and Unicode-aware case folding.
+    
+*   Category descriptions are optional free text (trimmed, at most 500 UTF-8 characters) describing what belongs in the category; AI clients read them to classify transactions.
     
 *   An archived category cannot be assigned to a new or updated transaction.
     
@@ -566,11 +570,11 @@ Requires `transaction_id`; accepts optional `reason`. The result is idempotent f
 
 ### 10.3 Category tools
 
-*   `list_categories`: supports `include_archived`, default false; order active categories by normalized name then ID.
+*   `list_categories`: supports `include_archived`, default false; order active categories by normalized name then ID. Each category includes its description so AI clients can classify transactions.
     
-*   `create_category`: requires `name`; returns `category_created` or `category_already_exists`.
+*   `create_category`: requires `name`; accepts optional `description`; returns `category_created` or `category_already_exists`.
     
-*   `update_category`: requires category ID and a new name; rejects collisions.
+*   `update_category`: requires category ID and at least one of `name` or `description` (omitted fields are left unchanged, an empty description clears it); rejects name collisions.
     
 *   `archive_category`: requires category ID; preserves historical associations.
     

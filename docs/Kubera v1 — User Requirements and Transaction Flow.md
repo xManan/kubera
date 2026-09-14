@@ -109,7 +109,8 @@ The caller is responsible for converting the source date/time to UTC before call
 
 ### 4.3 Determine the category
 
-The agent first checks existing Kubera categories and chooses the best match using the notification and the user's prior instructions.
+The agent first checks existing Kubera categories and chooses the best match using the notification, the categories' descriptions of what belongs in them, and the user's prior instructions.
+When creating a category, the agent should write a short description of what belongs in it so future transactions can be classified consistently.
 If no suitable category exists, the agent may automatically create a category when the intended category is clear. If the category is ambiguous, the agent must ask the user before creating or assigning one.
 The agent should avoid creating multiple categories for minor variations of the same merchant or transaction type.
 Examples:

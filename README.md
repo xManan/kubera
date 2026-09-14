@@ -36,7 +36,7 @@ Logs go to stderr as JSON; stdout carries only the MCP protocol.
 ## MCP tools
 
 Transactions: `create_transaction`, `get_transaction`, `list_transactions`, `update_transaction`, `void_transaction`.
-Categories: `list_categories`, `create_category`, `update_category`, `archive_category`.
+Categories: `list_categories`, `create_category`, `update_category`, `archive_category`. Categories carry an optional description of what belongs in them, which AI clients read when classifying transactions.
 Reports: `get_daily_summary`, `get_monthly_summary`, `get_transaction_summary`, `get_category_breakdown`.
 
 Conventions: amounts are positive integer minor units (₹198 → `19800`); timestamps are RFC 3339 UTC with explicit offset; ranges are half-open (`start <= occurred_at < end`); voided transactions are excluded from reports and default listings; updates preserve the transaction ID and original notification text; nothing is ever deleted, only voided.
