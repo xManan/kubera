@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -271,6 +272,74 @@ func TestErrorMapping(t *testing.T) {
 	}`)
 	if !isErr || out["error"].(map[string]any)["code"] != "invalid_timestamp" {
 		t.Fatalf("expected invalid_timestamp, got %v isErr=%v", out, isErr)
+	}
+}
+
+func TestCategoryDescriptions(t *testing.T) {
+	f := newFixture(t)
+
+	// Create with a description; listing exposes it for classification.
+	out, isErr := f.call(t, "create_category",
+		`{"name": "Eating Out", "description": "Restaurants, food delivery, coffee shops."}`)
+	if isErr {
+		t.Fatalf("create_category failed: %v", out)
+	}
+	cat := out["category"].(map[string]any)
+	if cat["description"] != "Restaurants, food delivery, coffee shops." {
+		t.Fatalf("description not stored: %v", cat["description"])
+	}
+	catID := cat["id"].(string)
+
+	// Description is optional.
+	out, _ = f.call(t, "create_category", `{"name": "No Desc"}`)
+	if out["category"].(map[string]any)["description"] != "" {
+		t.Fatalf("description should default to empty: %v", out["category"])
+	}
+
+	out, _ = f.call(t, "list_categories", `{}`)
+	var found bool
+	for _, c := range out["categories"].([]any) {
+		if c.(map[string]any)["id"] == catID {
+			found = true
+			if c.(map[string]any)["description"] != "Restaurants, food delivery, coffee shops." {
+				t.Fatalf("list_categories must expose description: %v", c)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("created category missing from listing")
+	}
+
+	// Description-only update leaves the name alone.
+	out, isErr = f.call(t, "update_category",
+		`{"category_id": "`+catID+`", "description": "Food delivery and dining."}`)
+	if isErr {
+		t.Fatalf("description-only update failed: %v", out)
+	}
+	cat = out["category"].(map[string]any)
+	if cat["name"] != "Eating Out" || cat["description"] != "Food delivery and dining." {
+		t.Fatalf("unexpected patch result: %v", cat)
+	}
+
+	// Empty string clears the description; omitting keeps it.
+	out, isErr = f.call(t, "update_category", `{"category_id": "`+catID+`", "description": ""}`)
+	if isErr || out["category"].(map[string]any)["description"] != "" {
+		t.Fatalf("empty description should clear: %v isErr=%v", out, isErr)
+	}
+	out, isErr = f.call(t, "update_category", `{"category_id": "`+catID+`", "name": "Dining"}`)
+	if isErr || out["category"].(map[string]any)["name"] != "Dining" {
+		t.Fatalf("name-only update failed: %v isErr=%v", out, isErr)
+	}
+
+	// Patch with no fields is a typed error; oversized description too.
+	out, isErr = f.call(t, "update_category", `{"category_id": "`+catID+`"}`)
+	if !isErr || out["error"].(map[string]any)["code"] != "empty_update" {
+		t.Fatalf("expected empty_update, got %v isErr=%v", out, isErr)
+	}
+	out, isErr = f.call(t, "update_category",
+		`{"category_id": "`+catID+`", "description": "`+strings.Repeat("x", 501)+`"}`)
+	if !isErr || out["error"].(map[string]any)["code"] != "invalid_request" {
+		t.Fatalf("expected invalid_request for oversized description, got %v isErr=%v", out, isErr)
 	}
 }
 

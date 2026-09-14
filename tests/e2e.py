@@ -112,6 +112,16 @@ def main():
     out, err = s.call("create_category", {"name": "x" * 101})
     check("category name over 100 chars rejected", err and out["error"]["code"] == "invalid_request", out)
 
+    out, err = s.call("create_category", {"name": "Fuel", "description": "Petrol, diesel, EV charging."})
+    check("create_category with description", not err and out["category"]["description"] == "Petrol, diesel, EV charging.", out)
+
+    out, err = s.call("update_category", {"category_id": out["category"]["id"], "description": "Fuel and tolls."})
+    check("description-only update keeps name",
+          not err and out["category"]["name"] == "Fuel" and out["category"]["description"] == "Fuel and tolls.", out)
+
+    out, err = s.call("update_category", {"category_id": out["category"]["id"]})
+    check("update_category with no fields rejected", err and out["error"]["code"] == "empty_update", out)
+
     # --- create transactions ---
     orig_text = "Spent Rs.198 On HDFC Bank Card xx1234"
     out, err = s.call("create_transaction", {
@@ -236,11 +246,14 @@ def main():
     check("archived category cannot be assigned by update",
           err and out["error"]["code"] == "archived_category", out)
     out, err = s.call("list_categories", {})
+    cats = {c["id"]: c["name"] for c in out["categories"]}
     check("default listing hides archived",
-          [c["id"] for c in out["categories"]] == [eat_id], out)
+          cats.get(eat_id) == "Eating Out" and sal_id not in cats, out)
     out, err = s.call("list_categories", {"include_archived": True})
+    names = [(c["name"], "archived" if c["archived_at"] else "active") for c in out["categories"]]
     check("include_archived shows archived, name order kept",
-          [c["id"] for c in out["categories"]] == [eat_id, sal_id], out)
+          ("Eating Out", "active") in names and ("Salary", "archived") in names
+          and names == sorted(names), out)
 
     # --- list + pagination ---
     out, err = s.call("list_transactions", {"limit": 2})

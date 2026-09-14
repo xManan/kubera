@@ -60,11 +60,12 @@ func toTxJSON(t domain.Transaction) TransactionJSON {
 }
 
 type CategoryJSON struct {
-	ID         string  `json:"id"`
-	Name       string  `json:"name"`
-	ArchivedAt *string `json:"archived_at"`
-	CreatedAt  string  `json:"created_at"`
-	UpdatedAt  string  `json:"updated_at"`
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	ArchivedAt  *string `json:"archived_at"`
+	CreatedAt   string  `json:"created_at"`
+	UpdatedAt   string  `json:"updated_at"`
 }
 
 func toCatJSON(c domain.Category) CategoryJSON {
@@ -74,11 +75,12 @@ func toCatJSON(c domain.Category) CategoryJSON {
 		archived = &s
 	}
 	return CategoryJSON{
-		ID:         string(c.ID),
-		Name:       c.Name,
-		ArchivedAt: archived,
-		CreatedAt:  tzRFC3339(c.CreatedAt),
-		UpdatedAt:  tzRFC3339(c.UpdatedAt),
+		ID:          string(c.ID),
+		Name:        c.Name,
+		Description: c.Description,
+		ArchivedAt:  archived,
+		CreatedAt:   tzRFC3339(c.CreatedAt),
+		UpdatedAt:   tzRFC3339(c.UpdatedAt),
 	}
 }
 

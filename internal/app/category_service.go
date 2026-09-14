@@ -9,11 +9,17 @@ import (
 )
 
 // CreateCategory creates a category; names are trimmed and unique among
-// active categories case-insensitively.
-func (s *Services) CreateCategory(ctx context.Context, name string) (domain.Category, error) {
+// active categories case-insensitively. Description is optional free text
+// that AI clients use to classify transactions.
+func (s *Services) CreateCategory(ctx context.Context, name, description string) (domain.Category, error) {
 	name = trim(name)
 	if err := domain.ValidateLength(name, domain.MaxCategoryNameLength,
 		domain.CodeInvalidRequest, "Category name"); err != nil {
+		return domain.Category{}, err
+	}
+	description = trim(description)
+	if err := domain.ValidateMaxLength(description, domain.MaxCategoryDescriptionLength,
+		domain.CodeInvalidRequest, "Category description"); err != nil {
 		return domain.Category{}, err
 	}
 	var created domain.Category
@@ -25,7 +31,7 @@ func (s *Services) CreateCategory(ctx context.Context, name string) (domain.Cate
 				"An active category with this name already exists.")
 		}
 		now := s.now()
-		c := domain.Category{ID: domain.CategoryID(s.id("cat")), Name: name, CreatedAt: now, UpdatedAt: now}
+		c := domain.Category{ID: domain.CategoryID(s.id("cat")), Name: name, Description: description, CreatedAt: now, UpdatedAt: now}
 		if err := s.Categories.Create(ctx, tx, c); err != nil {
 			return err
 		}
@@ -48,12 +54,28 @@ func (s *Services) GetCategory(ctx context.Context, id domain.CategoryID) (domai
 	return s.Categories.Get(ctx, s.DB, id)
 }
 
-// UpdateCategory renames a category, rejecting collisions with active names.
-func (s *Services) UpdateCategory(ctx context.Context, id domain.CategoryID, name string) (domain.Category, error) {
-	name = trim(name)
-	if err := domain.ValidateLength(name, domain.MaxCategoryNameLength,
-		domain.CodeInvalidRequest, "Category name"); err != nil {
-		return domain.Category{}, err
+// UpdateCategory patches a category's name and/or description (nil = leave
+// unchanged, empty string = clear), rejecting name collisions with active names.
+func (s *Services) UpdateCategory(ctx context.Context, id domain.CategoryID, name, description *string) (domain.Category, error) {
+	if name == nil && description == nil {
+		return domain.Category{}, domain.NewError(domain.CodeEmptyUpdate,
+			"Provide a name and/or description to update.")
+	}
+	newName := ""
+	if name != nil {
+		newName = trim(*name)
+		if err := domain.ValidateLength(newName, domain.MaxCategoryNameLength,
+			domain.CodeInvalidRequest, "Category name"); err != nil {
+			return domain.Category{}, err
+		}
+	}
+	newDescription := ""
+	if description != nil {
+		newDescription = trim(*description)
+		if err := domain.ValidateMaxLength(newDescription, domain.MaxCategoryDescriptionLength,
+			domain.CodeInvalidRequest, "Category description"); err != nil {
+			return domain.Category{}, err
+		}
 	}
 	var updated domain.Category
 	err := s.withWriteTx(ctx, func(tx *sql.Tx) error {
@@ -61,13 +83,18 @@ func (s *Services) UpdateCategory(ctx context.Context, id domain.CategoryID, nam
 		if err != nil {
 			return err
 		}
-		if dup, exists, err := s.Categories.FindActiveByName(ctx, tx, duplicate.NormalizeText(name)); err != nil {
-			return err
-		} else if exists && dup.ID != cur.ID {
-			return domain.NewError(domain.CodeCategoryAlreadyExists,
-				"An active category with this name already exists.")
+		if name != nil {
+			if dup, exists, err := s.Categories.FindActiveByName(ctx, tx, duplicate.NormalizeText(newName)); err != nil {
+				return err
+			} else if exists && dup.ID != cur.ID {
+				return domain.NewError(domain.CodeCategoryAlreadyExists,
+					"An active category with this name already exists.")
+			}
+			cur.Name = newName
 		}
-		cur.Name = name
+		if description != nil {
+			cur.Description = newDescription
+		}
 		cur.UpdatedAt = s.now()
 		if err := s.Categories.Update(ctx, tx, cur); err != nil {
 			return err

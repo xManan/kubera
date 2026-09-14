@@ -4,6 +4,9 @@
 CREATE TABLE categories (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
+    -- Optional free text describing what belongs in the category; AI clients
+    -- read it to classify transactions.
+    description TEXT NOT NULL DEFAULT '',
     name_normalized TEXT NOT NULL,
     archived_at TEXT,
     created_at TEXT NOT NULL,

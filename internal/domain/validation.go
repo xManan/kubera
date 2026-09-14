@@ -10,11 +10,12 @@ import (
 // Documented maximum lengths (UTF-8 characters) to prevent resource
 // exhaustion. See LLD section 8.1.
 const (
-	MaxDescriptionLength  = 500
-	MaxNotificationLength = 10000
-	MaxReferenceLength    = 256
-	MaxCategoryNameLength = 100
-	MaxVoidReasonLength   = 1000
+	MaxDescriptionLength         = 500
+	MaxNotificationLength        = 10000
+	MaxReferenceLength           = 256
+	MaxCategoryNameLength        = 100
+	MaxCategoryDescriptionLength = 500
+	MaxVoidReasonLength          = 1000
 )
 
 // ValidateDirection checks that d is a known direction.
@@ -64,6 +65,14 @@ func ParseTimestamp(s string) (time.Time, error) {
 func ValidateTimestamp(t time.Time) error {
 	if t.IsZero() || t.Year() < 1 || t.Year() > 9999 {
 		return NewError(CodeInvalidTimestamp, "Timestamp is outside the supported range.")
+	}
+	return nil
+}
+
+// ValidateMaxLength checks that s is within max UTF-8 characters; empty is allowed.
+func ValidateMaxLength(s string, max int, code ErrorCode, label string) error {
+	if utf8.RuneCountInString(s) > max {
+		return NewError(code, fmt.Sprintf("%s exceeds the maximum length of %d characters.", label, max))
 	}
 	return nil
 }

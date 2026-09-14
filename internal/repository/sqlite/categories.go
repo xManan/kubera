@@ -25,7 +25,7 @@ func scanCat(row interface{ Scan(...any) error }) (domain.Category, error) {
 		createdAt  string
 		updatedAt  string
 	)
-	err := row.Scan(&c.ID, &c.Name, &archivedAt, &createdAt, &updatedAt)
+	err := row.Scan(&c.ID, &c.Name, &c.Description, &archivedAt, &createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return c, domain.NewError(domain.CodeCategoryNotFound, "The requested category does not exist.")
 	}
@@ -50,8 +50,8 @@ func scanCat(row interface{ Scan(...any) error }) (domain.Category, error) {
 
 func (catRepo) Create(ctx context.Context, tx *sql.Tx, c domain.Category) error {
 	_, err := tx.ExecContext(ctx,
-		"INSERT INTO categories (id, name, name_normalized, archived_at, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, ?)",
-		string(c.ID), c.Name, duplicate.NormalizeText(c.Name), timeString(c.CreatedAt), timeString(c.UpdatedAt))
+		"INSERT INTO categories (id, name, description, name_normalized, archived_at, created_at, updated_at) VALUES (?, ?, ?, ?, NULL, ?, ?)",
+		string(c.ID), c.Name, c.Description, duplicate.NormalizeText(c.Name), timeString(c.CreatedAt), timeString(c.UpdatedAt))
 	if isUniqueViolation(err) {
 		return domain.NewError(domain.CodeCategoryAlreadyExists, "An active category with this name already exists.")
 	}
@@ -63,13 +63,13 @@ func (catRepo) Create(ctx context.Context, tx *sql.Tx, c domain.Category) error 
 
 func (catRepo) Get(ctx context.Context, q repository.Queryer, id domain.CategoryID) (domain.Category, error) {
 	row := q.QueryRowContext(ctx,
-		"SELECT id, name, archived_at, created_at, updated_at FROM categories WHERE id = ?", string(id))
+		"SELECT id, name, description, archived_at, created_at, updated_at FROM categories WHERE id = ?", string(id))
 	return scanCat(row)
 }
 
 func (catRepo) FindActiveByName(ctx context.Context, q repository.Queryer, nameNormalized string) (domain.Category, bool, error) {
 	row := q.QueryRowContext(ctx,
-		"SELECT id, name, archived_at, created_at, updated_at FROM categories WHERE name_normalized = ? AND archived_at IS NULL",
+		"SELECT id, name, description, archived_at, created_at, updated_at FROM categories WHERE name_normalized = ? AND archived_at IS NULL",
 		nameNormalized)
 	c, err := scanCat(row)
 	if domain.Is(err, domain.CodeCategoryNotFound) {
@@ -82,7 +82,7 @@ func (catRepo) FindActiveByName(ctx context.Context, q repository.Queryer, nameN
 }
 
 func (catRepo) List(ctx context.Context, q repository.Queryer, includeArchived bool) ([]domain.Category, error) {
-	query := "SELECT id, name, archived_at, created_at, updated_at FROM categories"
+	query := "SELECT id, name, description, archived_at, created_at, updated_at FROM categories"
 	if !includeArchived {
 		query += " WHERE archived_at IS NULL"
 	}
@@ -105,8 +105,8 @@ func (catRepo) List(ctx context.Context, q repository.Queryer, includeArchived b
 
 func (catRepo) Update(ctx context.Context, tx *sql.Tx, c domain.Category) error {
 	_, err := tx.ExecContext(ctx,
-		"UPDATE categories SET name = ?, name_normalized = ?, updated_at = ? WHERE id = ?",
-		c.Name, duplicate.NormalizeText(c.Name), timeString(c.UpdatedAt), string(c.ID))
+		"UPDATE categories SET name = ?, description = ?, name_normalized = ?, updated_at = ? WHERE id = ?",
+		c.Name, c.Description, duplicate.NormalizeText(c.Name), timeString(c.UpdatedAt), string(c.ID))
 	if isUniqueViolation(err) {
 		return domain.NewError(domain.CodeCategoryAlreadyExists, "An active category with this name already exists.")
 	}
